@@ -86,12 +86,6 @@ namespace TSJ.Gemini.Slack
             var data = GeminiContext.GlobalConfigurationWidgetStore.Get<SlackConfigData>(AppConstants.AppId);
             var saveData = data != null && data.Value != null ? data.Value : new SlackConfigData();
             saveData.SlackAPIEndpoint = SlackUrl;
-            if (channel.HasValue() && !channel.StartsWith("#"))
-            {
-                // Channel must start with #
-                channel = string.Concat('#', channel);
-            }
-
             saveData.ProjectChannels[project] = channel;
             
             GeminiContext.GlobalConfigurationWidgetStore.Save<SlackConfigData>(AppConstants.AppId, saveData);
