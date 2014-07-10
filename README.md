@@ -1,7 +1,7 @@
-TSJ.Gemini.Slack
+Gemini -> Slack integration
 ================
 
-Provides slack integration by posting issue changes to a channel in slack.
+Provides slack integration by posting issue changes to a channel in slack.  This includes every comment, assignment, resolution, satus chnge, and create.
 
 To install, download release and place in gemini's App_Data/Apps folder.  Restart the web app (maybe a better way?  I couldn't find one).
 
