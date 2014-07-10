@@ -172,3 +172,7 @@ UpgradeLog*.htm
 
 # Microsoft Fakes
 FakesAssemblies/
+
+
+TSJ.Gemini.Slack.sln.ide/
+!lib/

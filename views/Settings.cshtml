@@ -1,0 +1,66 @@
+﻿@using System.Web.Mvc.Html;
+@model TSJ.Gemini.Slack.SlackConfigModel
+
+<div id="cs-adhoc-page">
+    <form id="slack-integration-form" action="" method="post" autocomplete="off">
+        <table class="data-entry-box">
+            <tr>
+                <td>Slack API Endpoint</td>
+                <td>@Html.TextBox("SlackUrl", Model.SlackUrl, new { @class = "input-size9" })</td>
+            </tr>
+            <tr><td colspan="2"><div class="divider"></div></td></tr>
+            <tr>
+                <td>Project</td>
+                <td>@Html.DropDownList("Project", Model.Projects, new { @class = "input-size9" })</td>
+            </tr>
+            <tr>
+                <td>Slack Channel</td>
+                <td>@Html.TextBox("Channel", "", new { @class = "input-size9" })</td>
+            </tr>
+            <tr><td colspan="2"><div class="divider"></div></td></tr>
+            <tr>
+                <td colspan="2" align="right">
+                    <input id="slack-integration-save" type="button" value='@GetResource(Countersoft.Gemini.ResourceKeys.Save)' class='button-primary' />
+                </td>
+            </tr>
+        </table>
+        <p>Created By <a href="https://twitter.com/thesoftwarejedi">The Software Jedi</a>. Source code available <a href="https://github.com/thesoftwarejedi/TSJ.Gemini.Slack">here</a>.</p>
+    </form>
+</div>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $("#slack-integration-form").validate();
+
+        $("#slack-integration-save").click(function (e) {
+            gemini_commons.stopClick(e);
+
+            if (!$("#slack-integration-form").valid()) { return; }
+
+            var formData = $("#slack-integration-form").serialize();
+            gemini_ui.startBusy('#cs-adhoc-page .data-entry-box #slack-integration-save');
+            gemini_ajax.postCall("apps/slack", "save",
+                                function () {
+                                    gemini_popup.toast("Saved");
+                                    gemini_ui.stopBusy('#cs-adhoc-page .data-entry-box #slack-integration-save');
+                                },
+                                function () {
+                                    gemini_ui.stopBusy('#cs-adhoc-page .data-entry-box #slack-integration-save');
+                                },
+                                formData, null, true);
+        });
+
+        $('#slack-integration-form #Project').change(function () {
+            var id = $(this).val();
+            gemini_ajax.postCall("apps/slack", "configure",
+                                function (response) {
+                                    if (response.Success) {
+                                        $('#slack-integration-form #Channel').val(response.Result.Data.Channel);
+                                    }
+                                },
+                                function () { },
+                                { projectid: id },
+                                null, true);
+        });
+    });
+</script>
