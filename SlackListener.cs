@@ -5,7 +5,7 @@ using Countersoft.Gemini.Extensibility.Apps;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Collections;
-using KellermanSoftware.CompareNetObjects;
+//using KellermanSoftware.CompareNetObjects;
 using Countersoft.Gemini.Contracts;
 using Countersoft.Gemini.Commons.Entity;
 using Countersoft.Gemini.Infrastructure.Managers;
