@@ -12,6 +12,7 @@ namespace TSJ.Gemini.Slack
     {
         public string SlackUrl { get; set; }
         public IEnumerable<SelectListItem> Projects { get; set; }
+        public string Channel { get; set; }
     }
 
 }

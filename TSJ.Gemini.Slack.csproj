@@ -30,67 +30,36 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Countersoft.Foundation.Business">
-      <HintPath>libs\Countersoft.Foundation.Business.dll</HintPath>
-    </Reference>
-    <Reference Include="Countersoft.Foundation.Caching">
-      <HintPath>libs\Countersoft.Foundation.Caching.dll</HintPath>
-    </Reference>
     <Reference Include="Countersoft.Foundation.Commons">
-      <HintPath>libs\Countersoft.Foundation.Commons.dll</HintPath>
+      <HintPath>Libs\Countersoft.Foundation.Commons.dll</HintPath>
     </Reference>
     <Reference Include="Countersoft.Foundation.Contracts">
-      <HintPath>libs\Countersoft.Foundation.Contracts.dll</HintPath>
-    </Reference>
-    <Reference Include="Countersoft.Foundation.Data">
-      <HintPath>libs\Countersoft.Foundation.Data.dll</HintPath>
-    </Reference>
-    <Reference Include="Countersoft.Foundation.Linq">
-      <HintPath>libs\Countersoft.Foundation.Linq.dll</HintPath>
+      <HintPath>Libs\Countersoft.Foundation.Contracts.dll</HintPath>
     </Reference>
     <Reference Include="Countersoft.Foundation.Utility">
       <HintPath>libs\Countersoft.Foundation.Utility.dll</HintPath>
     </Reference>
-    <Reference Include="Countersoft.Foundation.Web">
-      <HintPath>libs\Countersoft.Foundation.Web.dll</HintPath>
-    </Reference>
-    <Reference Include="Countersoft.Foundation.Web.Mvc">
-      <HintPath>libs\Countersoft.Foundation.Web.Mvc.dll</HintPath>
-    </Reference>
     <Reference Include="Countersoft.Gemini">
-      <HintPath>libs\Countersoft.Gemini.dll</HintPath>
-    </Reference>
-    <Reference Include="Countersoft.Gemini.Api">
-      <HintPath>libs\Countersoft.Gemini.Api.dll</HintPath>
-    </Reference>
-    <Reference Include="Countersoft.Gemini.Business">
-      <HintPath>libs\Countersoft.Gemini.Business.dll</HintPath>
-    </Reference>
-    <Reference Include="Countersoft.Gemini.Caching">
-      <HintPath>libs\Countersoft.Gemini.Caching.dll</HintPath>
+      <HintPath>Libs\Countersoft.Gemini.dll</HintPath>
     </Reference>
     <Reference Include="Countersoft.Gemini.Commons">
-      <HintPath>libs\Countersoft.Gemini.Commons.dll</HintPath>
+      <HintPath>Libs\Countersoft.Gemini.Commons.dll</HintPath>
     </Reference>
     <Reference Include="Countersoft.Gemini.Contracts">
-      <HintPath>libs\Countersoft.Gemini.Contracts.dll</HintPath>
+      <HintPath>Libs\Countersoft.Gemini.Contracts.dll</HintPath>
     </Reference>
     <Reference Include="Countersoft.Gemini.Data">
-      <HintPath>libs\Countersoft.Gemini.Data.dll</HintPath>
+      <HintPath>Libs\Countersoft.Gemini.Data.dll</HintPath>
     </Reference>
     <Reference Include="Countersoft.Gemini.Extensibility">
-      <HintPath>libs\Countersoft.Gemini.Extensibility.dll</HintPath>
-    </Reference>
-    <Reference Include="Countersoft.Gemini.Mailer">
-      <HintPath>libs\Countersoft.Gemini.Mailer.dll</HintPath>
+      <HintPath>Libs\Countersoft.Gemini.Extensibility.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Web.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <Private>True</Private>
       <HintPath>packages\Microsoft.Web.Infrastructure.1.0.0.0\lib\net40\Microsoft.Web.Infrastructure.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=4.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Source\Libraries\Gemini\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>Libs\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -138,7 +107,6 @@
     <None Include="app.manifest">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="packages.config" />
     <None Include="views\Settings.cshtml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -146,7 +114,21 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>del $(ProjectDir)$(TargetName).dll 2&amp;gt;null 1&amp;gt;null
+copy $(TargetDir)$(TargetName).dll $(ProjectDir)$(TargetName).dll
+
+del $(ProjectDir)$(TargetName).pdb
+copy $(TargetDir)$(TargetName).pdb $(ProjectDir)$(TargetName).pdb
+
+del $(ProjectDir)$(TargetName).zip
+$(ProjectDir)libs\7za.exe a $(TargetDir)$(TargetName).zip $(ProjectDir)*.dll $(ProjectDir)*.pdb $(ProjectDir)*.manifest $(ProjectDir)views $(ProjectDir)*.js $(ProjectDir)*.css
+
+del $(ProjectDir)$(TargetName).dll
+del $(ProjectDir)$(TargetName).pdb</PostBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

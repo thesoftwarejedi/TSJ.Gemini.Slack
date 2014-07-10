@@ -10,6 +10,7 @@ using Countersoft.Gemini.Commons.Dto;
 using Countersoft.Gemini.Commons.Entity;
 using Countersoft.Gemini.Extensibility.Apps;
 using Countersoft.Gemini.Infrastructure.Apps;
+using Countersoft.Foundation.Commons.Extensions;
 
 namespace TSJ.Gemini.Slack
 {
@@ -59,15 +60,21 @@ namespace TSJ.Gemini.Slack
             try
             {
                 var data = GeminiContext.GlobalConfigurationWidgetStore.Get<SlackConfigData>(AppConstants.AppId);
-                if (data != null && data.Value != null) model.SlackUrl = data.Value.SlackAPIEndpoint;
+                if (data != null && data.Value != null)
+                {
+                    model.SlackUrl = data.Value.SlackAPIEndpoint;
+                    if (data.Value.ProjectChannels != null && data.Value.ProjectChannels.ContainsKey(0))
+                    {
+                        model.Channel = data.Value.ProjectChannels[0];
+                    }
+                }
             } catch
             { }
 
             var projects = GeminiContext.Projects.GetAll();
-            projects.Insert(0, new Project() { Id = 0, Name = "- Select -" });
+            projects.Insert(0, new Project() { Id = 0, Name = GetResource(Countersoft.Gemini.ResourceKeys.AllProjects) });
 
             model.Projects = new SelectList(projects, "Id", "Name", 0);
-                   
             var result = new WidgetResult();
             result.Success = true;
             result.Markup = new WidgetMarkup("views/Settings.cshtml", model);
@@ -79,10 +86,14 @@ namespace TSJ.Gemini.Slack
             var data = GeminiContext.GlobalConfigurationWidgetStore.Get<SlackConfigData>(AppConstants.AppId);
             var saveData = data != null && data.Value != null ? data.Value : new SlackConfigData();
             saveData.SlackAPIEndpoint = SlackUrl;
-            if (project != 0)
+            if (channel.HasValue() && !channel.StartsWith("#"))
             {
-                saveData.ProjectChannels[project] = channel;
+                // Channel must start with #
+                channel = string.Concat('#', channel);
             }
+
+            saveData.ProjectChannels[project] = channel;
+            
             GeminiContext.GlobalConfigurationWidgetStore.Save<SlackConfigData>(AppConstants.AppId, saveData);
             return JsonSuccess();
         }
