@@ -6,9 +6,11 @@ using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Collections;
 using Countersoft.Foundation.Commons.Extensions;
+using Countersoft.Gemini;
 using Countersoft.Gemini.Contracts;
 using Countersoft.Gemini.Commons.Entity;
 using Countersoft.Gemini.Infrastructure.Managers;
+using System.Text;
 
 namespace TSJ.Gemini.Slack
 {
@@ -75,9 +77,24 @@ namespace TSJ.Gemini.Slack
 
             string channel = GetProjectChannel(args.Entity.ProjectId, data.Value.ProjectChannels);
             if (channel == null || channel.Trim().Length == 0) return;
+            StringBuilder buffer = new StringBuilder();
+            var usersCache = GeminiApp.Cache().Users;
+            foreach (var userId in args.Entity.GetResources())
+            {
+                var user = usersCache.Find(u=> u.Id == userId);
+                if (user != null)
+                {
+                    buffer.Append(user.Fullname);
+                    buffer.Append(", ");
+                }
+            }
 
+            if(buffer.Length > 0)
+            {
+                buffer.Remove(buffer.Length-2,2);
+            }
             QuickSlack.Send(data.Value.SlackAPIEndpoint, channel, string.Format("{0} assigned <{1}|{2} - {3}> to {4}"
-                                            , args.User.Fullname, args.BuildIssueUrl(args.Entity), GetIssueKey(args), args.Entity.Title, args.Entity.Resources));
+                                            , args.User.Fullname, args.BuildIssueUrl(args.Entity), GetIssueKey(args), args.Entity.Title, buffer));
 
             base.AfterAssign(args);
         }
@@ -97,29 +114,7 @@ namespace TSJ.Gemini.Slack
                                             new[] { new { title = "Description", value = StripHTML(args.Entity.Description) } });
 
             base.AfterCreate(args);
-        }
-
-        public override void AfterProgressUpdate(IssueEventArgs args)
-        {
-            var data = GetConfig(args.Context);
-            if (data == null || data.Value == null) return;
-
-            string channel = GetProjectChannel(args.Entity.ProjectId, data.Value.ProjectChannels);
-            if (channel == null || channel.Trim().Length == 0) return;
-
-            QuickSlack.Send(data.Value.SlackAPIEndpoint, channel, string.Format("{0} updated progress on <{1}|{2} - {3}>"
-                                            , args.User.Fullname, args.BuildIssueUrl(args.Entity), GetIssueKey(args), args.Entity.Title),
-                                            "progress updated",
-                                            "good",
-                                            new[] { new
-                                            {
-                                                title = "Progress",
-                                                value = args.Entity.PercentComplete,
-                                                _short = true
-                                            } });
-
-            base.AfterProgressUpdate(args);
-        }
+        }       
 
         public override void AfterResolutionChange(IssueEventArgs args)
         {
@@ -165,23 +160,23 @@ namespace TSJ.Gemini.Slack
             base.AfterStatusChange(args);
         }
 
-        /*
         public override void AfterUpdateFull(IssueDtoEventArgs args)
         {
             var data = GetConfig(args.Context);
             if (data == null || data.Value == null) return;
 
-            string channel;
-            data.Value.ProjectChannels.TryGetValue(args.Issue.Project.Id, out channel);
+            string channel = GetProjectChannel(args.Issue.Entity.ProjectId, data.Value.ProjectChannels);
             if (channel == null || channel.Trim().Length == 0) return;
 
-            var fields = new CompareLogic(new ComparisonConfig() { IgnoreUnknownObjectTypes = true, CompareChildren = true })
-                                .Compare(args.Previous, args.Issue)
-                                .Differences
+            var issueManager = GeminiApp.GetManager<IssueManager>(args.User);
+            var userManager = GeminiApp.GetManager<UserManager>(args.User);
+            var userDto = userManager.Convert(args.User);
+            var changelog = issueManager.GetChangeLog(args.Issue, userDto, userDto, args.Issue.Entity.Revised.AddSeconds(-30));
+            var fields = changelog
                                 .Select(a => new
                                 {
-                                    title = "1-" + a.PropertyName,
-                                    value = a.Object1Value + " -> " + a.Object2Value,
+                                    title = a.Field,
+                                    value = a.FullChange,//. + " -> " + a.Object2Value,
                                     _short = true
                                 });
 
@@ -193,8 +188,7 @@ namespace TSJ.Gemini.Slack
 
             base.AfterUpdateFull(args);
         }
-        */
-
+        
         public static string StripHTML(string htmlString)
         {
             return Countersoft.Foundation.Utility.Helpers.HtmlHelper.ConvertHtmlToText2(htmlString).Replace((char)160, ' '); // Replace unicode NBSP with normal space as it breaks slack....
