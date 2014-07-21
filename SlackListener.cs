@@ -111,7 +111,7 @@ namespace TSJ.Gemini.Slack
                                             , args.User.Fullname, args.BuildIssueUrl(args.Entity), GetIssueKey(args), args.Entity.Title),
                                             "more details attached",
                                             "good",
-                                            new[] { new { title = "Description", value = StripHTML(args.Entity.Description) } });
+                                            new[] { new { title = "Description", value = StripHTML(args.Entity.Description), _short = true } });
 
             base.AfterCreate(args);
         }       
