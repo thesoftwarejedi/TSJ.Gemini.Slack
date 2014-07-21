@@ -176,7 +176,7 @@ namespace TSJ.Gemini.Slack
                                 .Select(a => new
                                 {
                                     title = a.Field,
-                                    value = a.FullChange,//. + " -> " + a.Object2Value,
+                                    value = StripHTML(a.FullChange),
                                     _short = true
                                 });
 
