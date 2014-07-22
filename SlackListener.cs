@@ -11,6 +11,7 @@ using Countersoft.Gemini.Contracts;
 using Countersoft.Gemini.Commons.Entity;
 using Countersoft.Gemini.Infrastructure.Managers;
 using System.Text;
+using Countersoft.Gemini.Commons.Permissions;
 
 namespace TSJ.Gemini.Slack
 {
@@ -65,7 +66,7 @@ namespace TSJ.Gemini.Slack
                                             ,args.User.Fullname, args.BuildIssueUrl(args.Issue), args.Issue.IssueKey, args.Issue.Title),
                                     "more details attached",
                                     "good",
-                                    new[] { new { title = "Comment", value = StripHTML(args.Entity.Comment), _short = true } });
+                                    new[] { new { title = "Comment", value = StripHTML(args.Entity.Comment), _short = false } });
 
             base.AfterComment(args);
         }
@@ -111,7 +112,7 @@ namespace TSJ.Gemini.Slack
                                             , args.User.Fullname, args.BuildIssueUrl(args.Entity), GetIssueKey(args), args.Entity.Title),
                                             "more details attached",
                                             "good",
-                                            new[] { new { title = "Description", value = StripHTML(args.Entity.Description), _short = true } });
+                                            new[] { new { title = "Description", value = StripHTML(args.Entity.Description), _short = false } });
 
             base.AfterCreate(args);
         }       
@@ -177,7 +178,7 @@ namespace TSJ.Gemini.Slack
                                 {
                                     title = a.Field,
                                     value = StripHTML(a.FullChange),
-                                    _short = true
+                                    _short = a.Entity.AttributeChanged != ItemAttributeVisibility.Description && a.Entity.AttributeChanged != ItemAttributeVisibility.AssociatedComments
                                 });
 
             QuickSlack.Send(data.Value.SlackAPIEndpoint, channel, string.Format("{0} updated issue <{1}|{2} - {3}>"
