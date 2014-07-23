@@ -10,7 +10,7 @@ namespace TSJ.Gemini.Slack
 {
     public static class QuickSlack
     {
-        public static void Send(string slackApiUrl, string channel, string text, string fallback = null, string color = null, object[] fields = null){
+        public static void Send(string slackApiUrl, string channel, string text, string fallback = null, string color = null, object[] fields = null, string fieldsText = null){
             //this method could and should be a one-liner
             var o = new
             {
@@ -22,10 +22,10 @@ namespace TSJ.Gemini.Slack
                                         new 
                                         {
                                             fallback = fallback,
-                                            //text = "",
+                                            text = fieldsText,
                                             //pretext = "",
                                             color = color,
-                                            fields = fields
+                                            fields = fieldsText.HasValue() ? null : fields
                                             }
                                         }
                                         : null

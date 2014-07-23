@@ -66,7 +66,7 @@ namespace TSJ.Gemini.Slack
                                             ,args.User.Fullname, args.BuildIssueUrl(args.Issue), args.Issue.IssueKey, args.Issue.Title),
                                     "more details attached",
                                     "good",
-                                    new[] { new { title = "Comment", value = StripHTML(args.Entity.Comment), _short = false } });
+                                    new[] { new { title = "Comment", value = StripHTML(args.Entity.Comment), _short = false } }, StripHTML(args.Entity.Comment));
 
             base.AfterComment(args);
         }
@@ -112,7 +112,7 @@ namespace TSJ.Gemini.Slack
                                             , args.User.Fullname, args.BuildIssueUrl(args.Entity), GetIssueKey(args), args.Entity.Title),
                                             "more details attached",
                                             "good",
-                                            new[] { new { title = "Description", value = StripHTML(args.Entity.Description), _short = false } });
+                                            new[] { new { title = "Description", value = StripHTML(args.Entity.Description), _short = false } }, StripHTML(args.Entity.Description));
 
             base.AfterCreate(args);
         }       
