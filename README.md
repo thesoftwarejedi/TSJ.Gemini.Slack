@@ -12,7 +12,7 @@ To configure:
 - Copy the provided URL
 - In Gemini, click "customize" up top
 - Click "apps" on the top
-- Enable Slack Integration
+- Enable Slack Integration by going to Apps -> Event Apps, then set Slack Integration to yes.
 - Click the "Slack Integration" tab on the left
 - Add the slack incoming web hooks url to the box (that you copied above), and press "Save"
 - For each project you wish to enable integration for, select it, enter a channel name, then press save (between each... awkward I know)
