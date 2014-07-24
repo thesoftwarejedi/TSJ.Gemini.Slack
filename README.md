@@ -20,4 +20,7 @@ To configure:
 
 Contact me via my info on github or @thesoftwarejedi on twitter with feedback.
 
+UPDATE: a post build task exists to automatically generate an archive file in the output directory.
+
+Leaving this here:
 To build, compile then add project DLL, views foldes, and manifest file to a zip and place in gemini's App_Data/Apps folder as specified here: http://docs.countersoft.com/developing-custom-apps/
