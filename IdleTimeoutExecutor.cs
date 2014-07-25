@@ -14,7 +14,7 @@ namespace TSJ.Gemini.Slack
      * around the given mutex from outside the object.  Lock around creation, be sure to invalidate references
      * on "removed" being called, and otherwise check the "Dead" property before adjusting the timeout
      * **/
-    public class IdleTimeoutExecutor<T>
+    public class IdleTimeoutExecutor
     {
 
         private DateTime _timeout;
@@ -41,7 +41,7 @@ namespace TSJ.Gemini.Slack
             private set;
         }
 
-        public IdleTimeoutExecutor(DateTime timeout, Action onTimeoutExpired, object mutex, Action<T> onFinish, T key)
+        public IdleTimeoutExecutor(DateTime timeout, Action onTimeoutExpired, object mutex, Action onFinish)
         {
             DateTime created = DateTime.Now;
             if (DateTime.Now > timeout)
@@ -65,7 +65,7 @@ namespace TSJ.Gemini.Slack
                             onTimeoutExpired();
                         }
                         catch { }
-                        onFinish(key);
+                        onFinish();
                         Dead = true;
                     }
                 }).Start();
