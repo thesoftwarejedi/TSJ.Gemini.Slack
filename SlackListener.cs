@@ -15,12 +15,28 @@ using Countersoft.Gemini.Commons.Permissions;
 
 namespace TSJ.Gemini.Slack
 {
+
+    /**
+     * Messages are sent to slack on 3 events:
+     * - Create
+     *      - Immediately published to a slack channel
+     *      
+     * - Change (includes comments)
+     *      - this create a thread (per user/ticket#) which will wait for X seconds 
+     *          of no changes flushing out all changes made in that time period.  This is
+     *          to accomodate several changes being made at the same time without flooding a channel.
+     * */
     [AppType(AppTypeEnum.Event),
     AppGuid("ABBADABB-AD00-4151-A177-1F0529EEE7E1"),
     AppName("Slack Integration"),
     AppDescription("Provides slack integration by posting updates to gemini to a channel in slack.")]
     public class SlackListener : AbstractIssueListener
     {
+
+        //not sure of scope here, is a listener treated as a singleton?  If it is, this need not be static
+        //tuple is user and issueid
+        private static Dictionary<Tuple<string, int>, IdleTimeoutExecutor> _executorDictionary =
+            new Dictionary<Tuple<string, int>, IdleTimeoutExecutor>();
 
         private static GlobalConfigurationWidgetData<SlackConfigData> GetConfig(GeminiContext ctx)
         {
@@ -54,52 +70,6 @@ namespace TSJ.Gemini.Slack
             return string.Concat(project.Code, '-', args.Entity.Id);
         }
 
-        public override void AfterComment(IssueCommentEventArgs args)
-        {            
-            var data = GetConfig(args.Context);
-            if (data == null || data.Value == null) return;
-
-            string channel = GetProjectChannel(args.Issue.Project.Id, data.Value.ProjectChannels);
-            if (channel == null || channel.Trim().Length == 0) return;
-
-            QuickSlack.Send(data.Value.SlackAPIEndpoint, channel, string.Format("{0} added a comment to <{1}|{2} - {3}>"
-                                            ,args.User.Fullname, args.BuildIssueUrl(args.Issue), args.Issue.IssueKey, args.Issue.Title),
-                                    "more details attached",
-                                    "good",
-                                    new[] { new { title = "Comment", value = StripHTML(args.Entity.Comment), _short = false } }, StripHTML(args.Entity.Comment));
-
-            base.AfterComment(args);
-        }
-
-        public override void AfterAssign(IssueEventArgs args)
-        {
-            var data = GetConfig(args.Context);
-            if (data == null || data.Value == null) return;
-
-            string channel = GetProjectChannel(args.Entity.ProjectId, data.Value.ProjectChannels);
-            if (channel == null || channel.Trim().Length == 0) return;
-            StringBuilder buffer = new StringBuilder();
-            var usersCache = GeminiApp.Cache().Users;
-            foreach (var userId in args.Entity.GetResources())
-            {
-                var user = usersCache.Find(u=> u.Id == userId);
-                if (user != null)
-                {
-                    buffer.Append(user.Fullname);
-                    buffer.Append(", ");
-                }
-            }
-
-            if(buffer.Length > 0)
-            {
-                buffer.Remove(buffer.Length-2,2);
-            }
-            QuickSlack.Send(data.Value.SlackAPIEndpoint, channel, string.Format("{0} assigned <{1}|{2} - {3}> to {4}"
-                                            , args.User.Fullname, args.BuildIssueUrl(args.Entity), GetIssueKey(args), args.Entity.Title, buffer));
-
-            base.AfterAssign(args);
-        }
-
         public override void AfterCreate(IssueEventArgs args)
         {
             var data = GetConfig(args.Context);
@@ -117,50 +87,12 @@ namespace TSJ.Gemini.Slack
             base.AfterCreate(args);
         }       
 
-        public override void AfterResolutionChange(IssueEventArgs args)
-        {
-            var data = GetConfig(args.Context);
-            if (data == null || data.Value == null) return;
-
-            string channel = GetProjectChannel(args.Entity.ProjectId, data.Value.ProjectChannels);
-            if (channel == null || channel.Trim().Length == 0) return;
-
-            QuickSlack.Send(data.Value.SlackAPIEndpoint, channel, string.Format("{0} updated resolution on <{1}|{2} - {3}>"
-                                            , args.User.Fullname, args.BuildIssueUrl(args.Entity), GetIssueKey(args), args.Entity.Title),
-                                            "resolution changed",
-                                            "good",
-                                            new[] { new
-                                            {
-                                                title = "Resolution Change",
-                                                value = args.Context.Meta.ResolutionGet(args.Previous.ResolutionId).Label + " -> " + args.Context.Meta.ResolutionGet(args.Entity.ResolutionId).Label,
-                                                _short = true
-                                            } });
-
-            base.AfterResolutionChange(args);
-        }
-
-        public override void AfterStatusChange(IssueEventArgs args)
-        {
-            var data = GetConfig(args.Context);
-            if (data == null || data.Value == null) return;
-
-            string channel = GetProjectChannel(args.Entity.ProjectId, data.Value.ProjectChannels);
-            if (channel == null || channel.Trim().Length == 0) return;
-
-            QuickSlack.Send(data.Value.SlackAPIEndpoint, channel, string.Format("{0} updated status on <{1}|{2} - {3}>"
-                                            , args.User.Fullname, args.BuildIssueUrl(args.Entity), GetIssueKey(args), args.Entity.Title),
-                                            "status changed",
-                                            "good",
-                                            new[] { new
-                                            {
-                                                title = "Status Change",
-                                                value = args.Context.Meta.StatusGet(args.Previous.StatusId).Label + " -> " + args.Context.Meta.StatusGet(args.Entity.StatusId).Label,
-                                                _short = true
-                                            } });
-
-            base.AfterStatusChange(args);
-        }
-
+        /***
+         * the functionality here hinges on the "changelog" that is provided from the gemini api
+         * We don't have to keep track of changes.
+         * This method looks for a recent change for this user/issue and extends the timeout if there is
+         * a match, otherwise it creates an executor to post to slack after 60 seconds
+         * */
         public override void AfterUpdateFull(IssueDtoEventArgs args)
         {
             var data = GetConfig(args.Context);
@@ -169,26 +101,56 @@ namespace TSJ.Gemini.Slack
             string channel = GetProjectChannel(args.Issue.Entity.ProjectId, data.Value.ProjectChannels);
             if (channel == null || channel.Trim().Length == 0) return;
 
-            var issueManager = GeminiApp.GetManager<IssueManager>(args.User);
-            var userManager = GeminiApp.GetManager<UserManager>(args.User);
-            var userDto = userManager.Convert(args.User);
-            var changelog = issueManager.GetChangeLog(args.Issue, userDto, userDto, args.Issue.Entity.Revised.AddSeconds(-30));
-            var fields = changelog
-                                .Select(a => new
-                                {
-                                    title = a.Field,
-                                    value = StripHTML(a.FullChange),
-                                    _short = a.Entity.AttributeChanged != ItemAttributeVisibility.Description && a.Entity.AttributeChanged != ItemAttributeVisibility.AssociatedComments
-                                });
+            lock (_executorDictionary)
+            {
+                var key = Tuple.Create(args.User.Username, args.Issue.Id);
+                //look for an existing username/issue# combination indicating that a change was recently
+                //made in which case we just extend the timeout
+                IdleTimeoutExecutor ex = null;
+                if (!_executorDictionary.TryGetValue(key, out ex))
+                {
+                    DateTime createDate = DateTime.Now.AddSeconds(-1);
 
-            QuickSlack.Send(data.Value.SlackAPIEndpoint, channel, string.Format("{0} updated issue <{1}|{2} - {3}>"
-                                            , args.User.Fullname, args.BuildIssueUrl(args.Issue), args.Issue.IssueKey, args.Issue.Title),
-                                            "details attached",
-                                            "warning",
-                                            fields.ToArray());
+                    _executorDictionary[key] = new IdleTimeoutExecutor(DateTime.Now.AddSeconds(30),
+                        //this executes x  seconds after the last update, initially set above  ^^  then adjusted on subsequent
+                        //updates further below (in the else) based on the key being found
+                        () => { PostChangesToSlack(args, data, channel, createDate); }, 
+                        _executorDictionary,
+                        () => { _executorDictionary.Remove(key); });
+                }
+                else
+                {
+                    //we found a pending executor, just update the timeout to be later
+                    ex.Timeout = DateTime.Now.AddSeconds(30);
+                }
+            }
 
             base.AfterUpdateFull(args);
         }
+
+    //called when the timeout has expired which was waiting for pending changes.
+    private static void PostChangesToSlack(IssueDtoEventArgs args, GlobalConfigurationWidgetData<SlackConfigData> data, string channel, DateTime createDate)
+    {
+        var issueManager = GeminiApp.GetManager<IssueManager>(args.User);
+        var userManager = GeminiApp.GetManager<UserManager>(args.User);
+        var userDto = userManager.Convert(args.User);
+        var issue = issueManager.Get(args.Issue.Id);
+        //get the changelog of all changes since the create date (minus a second to avoid missing the initial change)
+        var changelog = issueManager.GetChangeLog(issue, userDto, userDto, createDate.AddSeconds(-1));
+        var fields = changelog
+                            .Select(a => new
+                            {
+                                title = a.Field,
+                                value = StripHTML(a.FullChange),
+                                _short = a.Entity.AttributeChanged != ItemAttributeVisibility.Description && a.Entity.AttributeChanged != ItemAttributeVisibility.AssociatedComments
+                            });
+
+        QuickSlack.Send(data.Value.SlackAPIEndpoint, channel, string.Format("{0} updated issue <{1}|{2} - {3}> {4} seconds ago"
+                                        , args.User.Fullname, args.BuildIssueUrl(args.Issue), args.Issue.IssueKey, args.Issue.Title, (int)((DateTime.Now-createDate).TotalSeconds)),
+                                        "details attached",
+                                        "good", //todo colors here based on something
+                                        fields.ToArray());
+    }
         
         public static string StripHTML(string htmlString)
         {
