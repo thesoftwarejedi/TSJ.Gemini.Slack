@@ -15,12 +15,28 @@ using Countersoft.Gemini.Commons.Permissions;
 
 namespace TSJ.Gemini.Slack
 {
+
+    /**
+     * Messages are sent to slack on 3 events:
+     * - Create
+     *      - Immediately published to a slack channel
+     *      
+     * - Change
+     *      - either of these changes create a thread (per user/ticet) which will wait for X seconds 
+     *          of no changes flushing out all changes made in that time period.  This is
+     *          to accomodate several changes being made at the same time without flooding a channel.
+     * */
     [AppType(AppTypeEnum.Event),
     AppGuid("ABBADABB-AD00-4151-A177-1F0529EEE7E1"),
     AppName("Slack Integration"),
     AppDescription("Provides slack integration by posting updates to gemini to a channel in slack.")]
     public class SlackListener : AbstractIssueListener
     {
+
+        //not sure of scope here, is a listener treated as a singleton?  If it is, this need not be static
+        //tuple is user and issueid
+        private static Dictionary<Tuple<string, int>, IdleTimeoutExecutor<Tuple<string, int>>> _executorDictionary =
+            new Dictionary<Tuple<string, int>, IdleTimeoutExecutor<Tuple<string, int>>>();
 
         private static GlobalConfigurationWidgetData<SlackConfigData> GetConfig(GeminiContext ctx)
         {
@@ -54,6 +70,7 @@ namespace TSJ.Gemini.Slack
             return string.Concat(project.Code, '-', args.Entity.Id);
         }
 
+        /*
         public override void AfterComment(IssueCommentEventArgs args)
         {            
             var data = GetConfig(args.Context);
@@ -70,7 +87,9 @@ namespace TSJ.Gemini.Slack
 
             base.AfterComment(args);
         }
+         * */
 
+        /*
         public override void AfterAssign(IssueEventArgs args)
         {
             var data = GetConfig(args.Context);
@@ -99,6 +118,7 @@ namespace TSJ.Gemini.Slack
 
             base.AfterAssign(args);
         }
+         * */
 
         public override void AfterCreate(IssueEventArgs args)
         {
@@ -117,6 +137,7 @@ namespace TSJ.Gemini.Slack
             base.AfterCreate(args);
         }       
 
+        /*
         public override void AfterResolutionChange(IssueEventArgs args)
         {
             var data = GetConfig(args.Context);
@@ -138,7 +159,9 @@ namespace TSJ.Gemini.Slack
 
             base.AfterResolutionChange(args);
         }
+         * */
 
+        /*
         public override void AfterStatusChange(IssueEventArgs args)
         {
             var data = GetConfig(args.Context);
@@ -160,6 +183,7 @@ namespace TSJ.Gemini.Slack
 
             base.AfterStatusChange(args);
         }
+         * */
 
         public override void AfterUpdateFull(IssueDtoEventArgs args)
         {
@@ -169,23 +193,42 @@ namespace TSJ.Gemini.Slack
             string channel = GetProjectChannel(args.Issue.Entity.ProjectId, data.Value.ProjectChannels);
             if (channel == null || channel.Trim().Length == 0) return;
 
-            var issueManager = GeminiApp.GetManager<IssueManager>(args.User);
-            var userManager = GeminiApp.GetManager<UserManager>(args.User);
-            var userDto = userManager.Convert(args.User);
-            var changelog = issueManager.GetChangeLog(args.Issue, userDto, userDto, args.Issue.Entity.Revised.AddSeconds(-30));
-            var fields = changelog
-                                .Select(a => new
-                                {
-                                    title = a.Field,
-                                    value = StripHTML(a.FullChange),
-                                    _short = a.Entity.AttributeChanged != ItemAttributeVisibility.Description && a.Entity.AttributeChanged != ItemAttributeVisibility.AssociatedComments
-                                });
+            lock (_executorDictionary)
+            {
+                var key = Tuple.Create(args.User.Username, args.Issue.Id);
+                var ex = _executorDictionary[key];
+                if (ex == null)
+                {
+                    DateTime createDate = DateTime.Now.AddSeconds(-1);
+                    _executorDictionary[key] = new IdleTimeoutExecutor<Tuple<string, int>>(DateTime.Now.AddSeconds(60),
+                        () =>
+                        {
+                            var issueManager = GeminiApp.GetManager<IssueManager>(args.User);
+                            var userManager = GeminiApp.GetManager<UserManager>(args.User);
+                            var userDto = userManager.Convert(args.User);
+                            var changelog = issueManager.GetChangeLog(args.Issue, userDto, userDto, createDate.AddSeconds(-1));
+                            var fields = changelog
+                                                .Select(a => new
+                                                {
+                                                    title = a.Field,
+                                                    value = StripHTML(a.FullChange),
+                                                    _short = a.Entity.AttributeChanged != ItemAttributeVisibility.Description && a.Entity.AttributeChanged != ItemAttributeVisibility.AssociatedComments
+                                                });
 
-            QuickSlack.Send(data.Value.SlackAPIEndpoint, channel, string.Format("{0} updated issue <{1}|{2} - {3}>"
-                                            , args.User.Fullname, args.BuildIssueUrl(args.Issue), args.Issue.IssueKey, args.Issue.Title),
-                                            "details attached",
-                                            "warning",
-                                            fields.ToArray());
+                            QuickSlack.Send(data.Value.SlackAPIEndpoint, channel, string.Format("{0} updated issue <{1}|{2} - {3}>"
+                                                            , args.User.Fullname, args.BuildIssueUrl(args.Issue), args.Issue.IssueKey, args.Issue.Title),
+                                                            "details attached",
+                                                            "warning",
+                                                            fields.ToArray());
+                        }, _executorDictionary,
+                    a => { _executorDictionary.Remove(a); },
+                    key);
+                }
+                else
+                {
+                    ex.Timeout = DateTime.Now.AddSeconds(60);
+                }
+            }
 
             base.AfterUpdateFull(args);
         }

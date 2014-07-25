@@ -96,6 +96,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IdleTimeoutExecutor.cs" />
     <Compile Include="QuickSlack.cs" />
     <Compile Include="SlackConfigController.cs" />
     <Compile Include="SlackConfigData.cs" />
