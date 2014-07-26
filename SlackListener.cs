@@ -82,7 +82,8 @@ namespace TSJ.Gemini.Slack
                                             , args.User.Fullname, args.BuildIssueUrl(args.Entity), GetIssueKey(args), args.Entity.Title),
                                             "more details attached",
                                             "good",
-                                            new[] { new { title = "Description", value = StripHTML(args.Entity.Description), _short = false } }, StripHTML(args.Entity.Description));
+                                            new[] { new { title = "Description", value = StripHTML(args.Entity.Description), _short = false } }, 
+                                            StripHTML(args.Entity.Description));
 
             base.AfterCreate(args);
         }       
@@ -111,17 +112,17 @@ namespace TSJ.Gemini.Slack
                 {
                     DateTime createDate = DateTime.Now.AddSeconds(-1);
 
-                    _executorDictionary[key] = new IdleTimeoutExecutor(DateTime.Now.AddSeconds(30),
+                    _executorDictionary[key] = new IdleTimeoutExecutor(DateTime.Now.AddSeconds(data.Value.SecondsToQueueChanges),
                         //this executes x  seconds after the last update, initially set above  ^^  then adjusted on subsequent
                         //updates further below (in the else) based on the key being found
-                        () => { PostChangesToSlack(args, data, channel, createDate); }, 
-                        _executorDictionary,
-                        () => { _executorDictionary.Remove(key); });
+                        () => { PostChangesToSlack(args, data, channel, createDate); },
+                        () => { _executorDictionary.Remove(key); }, 
+                        _executorDictionary);
                 }
                 else
                 {
                     //we found a pending executor, just update the timeout to be later
-                    ex.Timeout = DateTime.Now.AddSeconds(30);
+                    ex.Timeout = DateTime.Now.AddSeconds(data.Value.SecondsToQueueChanges);
                 }
             }
 
@@ -145,8 +146,8 @@ namespace TSJ.Gemini.Slack
                                 _short = a.Entity.AttributeChanged != ItemAttributeVisibility.Description && a.Entity.AttributeChanged != ItemAttributeVisibility.AssociatedComments
                             });
 
-        QuickSlack.Send(data.Value.SlackAPIEndpoint, channel, string.Format("{0} updated issue <{1}|{2} - {3}> {4} seconds ago"
-                                        , args.User.Fullname, args.BuildIssueUrl(args.Issue), args.Issue.IssueKey, args.Issue.Title, (int)((DateTime.Now-createDate).TotalSeconds)),
+        QuickSlack.Send(data.Value.SlackAPIEndpoint, channel, string.Format("{0} updated issue <{1}|{2} - {3}>"
+                                        , args.User.Fullname, args.BuildIssueUrl(args.Issue), args.Issue.IssueKey, args.Issue.Title),
                                         "details attached",
                                         "good", //todo colors here based on something
                                         fields.ToArray());
