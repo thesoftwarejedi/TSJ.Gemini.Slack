@@ -10,6 +10,11 @@
             </tr>
             <tr><td colspan="2"><div class="divider"></div></td></tr>
             <tr>
+                <td>Seconds To Queue Changes</td>
+                <td>@Html.TextBox("SecondsToQueueChanges", Model.SecondsToQueueChanges, new { @class = "input-size9" })</td>
+            </tr>
+            <tr><td colspan="2"><div class="divider"></div></td></tr>
+            <tr>
                 <td>Project</td>
                 <td>@Html.DropDownList("Project", Model.Projects, new { @class = "input-size9" })</td>
             </tr>
@@ -19,12 +24,19 @@
             </tr>
             <tr><td colspan="2"><div class="divider"></div></td></tr>
             <tr>
-                <td colspan="2" align="right">
-                    <input id="slack-integration-save" type="button" value='@GetResource(Countersoft.Gemini.ResourceKeys.Save)' class='button-primary' />
+                <td>
+                    <small>
+                        Created By <a href="https://twitter.com/thesoftwarejedi">The Software Jedi</a>
+                        <br />
+                        Source code available <a href="https://github.com/thesoftwarejedi/TSJ.Gemini.Slack">here</a>
+                    </small>
+                </td>
+                <td align="right">
+                    <input id="slack-integration-save" type="button" value='@GetResource(Countersoft.Gemini.ResourceKeys.Save)'
+                           class='button-primary' />
                 </td>
             </tr>
         </table>
-        <p>Created By <a href="https://twitter.com/thesoftwarejedi">The Software Jedi</a>. Source code available <a href="https://github.com/thesoftwarejedi/TSJ.Gemini.Slack">here</a>.</p>
     </form>
 </div>
 
