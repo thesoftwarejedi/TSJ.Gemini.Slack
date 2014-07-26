@@ -18,19 +18,27 @@ namespace TSJ.Gemini.Slack
     {
 
         private DateTime _timeout;
+
+        //dangerous, always lock in this order
+        //this is done for thread safety outside of the object
+        //on the mutex given, yet also on a private mutex to
+        //use for notification - we don't want to reuse the provided
+        //mutex for internal notification purposes
         private object _mutex;
+        private object _privateMutex = new object();
 
         public DateTime Timeout
         {
             get { return _timeout; }
             set
             {
-                lock (_mutex)
+                lock (_mutex) 
+                lock (_privateMutex)
                 {
                     if (Dead) throw new Exception("IdleTimeoutExecutor already fired");
                     _timeout = value;
                     //alert the waiting thread
-                    Monitor.PulseAll(_mutex);
+                    Monitor.PulseAll(_privateMutex);
                 }
             }
         }
@@ -41,7 +49,7 @@ namespace TSJ.Gemini.Slack
             private set;
         }
 
-        public IdleTimeoutExecutor(DateTime timeout, Action onTimeoutExpired, object mutex, Action onFinish)
+        public IdleTimeoutExecutor(DateTime timeout, Action onTimeoutExpired, Action cleanup, object mutex = null)
         {
             DateTime created = DateTime.Now;
             if (DateTime.Now > timeout)
@@ -51,21 +59,23 @@ namespace TSJ.Gemini.Slack
             else
             {
                 _timeout = timeout;
-                _mutex = mutex;
+                _mutex = mutex ?? new object();
                 new Thread(() =>
                 {
                     lock (_mutex)
+                    lock (_privateMutex)
                     {
                         while (_timeout > DateTime.Now)
                         {
-                            Monitor.Wait(_mutex, _timeout - DateTime.Now);
+                            //release the lock while we wait for timeout or notification
+                            Monitor.Wait(_privateMutex, _timeout - DateTime.Now);
                         }
                         try
                         {
                             onTimeoutExpired();
                         }
-                        catch { }
-                        onFinish();
+                        catch { } //just let it go, nothing we can do
+                        cleanup();
                         Dead = true;
                     }
                 }).Start();
