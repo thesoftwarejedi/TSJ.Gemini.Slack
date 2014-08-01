@@ -77,6 +77,7 @@ namespace TSJ.Gemini.Slack
                                 {
                                     //release the lock while we wait for timeout or notification
                                     Monitor.Wait(_privateMutex, _timeout - now);
+                                    now = DateTime.Now;
                                 }
                                 try
                                 {
