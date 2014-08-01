@@ -24,12 +24,17 @@ namespace TSJ.Gemini.Slack
         //on the mutex given, yet also on a private mutex to
         //use for notification - we don't want to reuse the provided
         //mutex for internal notification purposes
-        private object _mutex;
-        private object _privateMutex = new object();
+        private volatile object _mutex;
+        private volatile object _privateMutex = new object();
 
         public DateTime Timeout
         {
-            get { return _timeout; }
+            get
+            {
+                lock (_mutex)
+                lock (_privateMutex)
+                    { return _timeout; }
+            }
             set
             {
                 lock (_mutex) 
@@ -65,18 +70,23 @@ namespace TSJ.Gemini.Slack
                     lock (_mutex)
                     lock (_privateMutex)
                     {
-                        while (_timeout > DateTime.Now)
-                        {
-                            //release the lock while we wait for timeout or notification
-                            Monitor.Wait(_privateMutex, _timeout - DateTime.Now);
-                        }
-                        try
-                        {
-                            onTimeoutExpired();
-                        }
-                        catch { } //just let it go, nothing we can do
-                        cleanup();
-                        Dead = true;
+                            try
+                            {
+                                DateTime now = DateTime.Now;
+                                while (_timeout > now)
+                                {
+                                    //release the lock while we wait for timeout or notification
+                                    Monitor.Wait(_privateMutex, _timeout - now);
+                                }
+                                try
+                                {
+                                    onTimeoutExpired();
+                                }
+                                catch { } //just let it go, nothing we can do
+                                Dead = true;
+                                cleanup();
+                            } catch
+                            { } //FFS what now!?  avoid exception to OS thread.
                     }
                 }).Start();
             }
