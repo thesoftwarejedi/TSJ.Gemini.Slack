@@ -10,6 +10,11 @@
             </tr>
             <tr><td colspan="2"><div class="divider"></div></td></tr>
             <tr>
+                <td>Seconds To Queue Changes</td>
+                <td>@Html.TextBox("SecondsToQueueChanges", Model.SecondsToQueueChanges, new { @class = "input-size9" })</td>
+            </tr>
+            <tr><td colspan="2"><div class="divider"></div></td></tr>
+            <tr>
                 <td>Project</td>
                 <td>@Html.DropDownList("Project", Model.Projects, new { @class = "input-size9" })</td>
             </tr>

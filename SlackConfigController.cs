@@ -67,6 +67,7 @@ namespace TSJ.Gemini.Slack
                     {
                         model.Channel = data.Value.ProjectChannels[0];
                     }
+                    model.SecondsToQueueChanges = data.Value.SecondsToQueueChanges == 0 ? 60 : data.Value.SecondsToQueueChanges;
                 }
             } catch
             { }
@@ -75,18 +76,20 @@ namespace TSJ.Gemini.Slack
             projects.Insert(0, new Project() { Id = 0, Name = GetResource(Countersoft.Gemini.ResourceKeys.AllProjects) });
 
             model.Projects = new SelectList(projects, "Id", "Name", 0);
+
             var result = new WidgetResult();
             result.Success = true;
             result.Markup = new WidgetMarkup("views/Settings.cshtml", model);
             return result;
         }
 
-        public ActionResult SaveConfig(string SlackUrl, int project, string channel)
+        public ActionResult SaveConfig(string SlackUrl, int project, string channel, int secondsToQueueChanges)
         {
             var data = GeminiContext.GlobalConfigurationWidgetStore.Get<SlackConfigData>(AppConstants.AppId);
             var saveData = data != null && data.Value != null ? data.Value : new SlackConfigData();
             saveData.SlackAPIEndpoint = SlackUrl;
             saveData.ProjectChannels[project] = channel;
+            saveData.SecondsToQueueChanges = secondsToQueueChanges;
             
             GeminiContext.GlobalConfigurationWidgetStore.Save<SlackConfigData>(AppConstants.AppId, saveData);
             return JsonSuccess();
@@ -95,17 +98,15 @@ namespace TSJ.Gemini.Slack
         public ActionResult GetConfig(int projectId)
         {
             var data = GeminiContext.GlobalConfigurationWidgetStore.Get<SlackConfigData>(AppConstants.AppId);
-            string slack = "";
             string channel = "";
             if (data != null && data.Value != null)
             {
-                slack = data.Value.SlackAPIEndpoint;
                 if (data.Value.ProjectChannels.ContainsKey(projectId))
                 {
                     channel = data.Value.ProjectChannels[projectId];
                 }
             }
-            return JsonSuccess(new { SlackUrl = slack, Channel = channel });
+            return JsonSuccess(new { Channel = channel });
         }
     }
 }
