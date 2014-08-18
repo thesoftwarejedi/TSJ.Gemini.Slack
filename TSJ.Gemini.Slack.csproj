@@ -36,6 +36,9 @@
     <Reference Include="Countersoft.Foundation.Contracts">
       <HintPath>Libs\Countersoft.Foundation.Contracts.dll</HintPath>
     </Reference>
+    <Reference Include="Countersoft.Foundation.Data">
+      <HintPath>libs\Countersoft.Foundation.Data.dll</HintPath>
+    </Reference>
     <Reference Include="Countersoft.Foundation.Utility">
       <HintPath>libs\Countersoft.Foundation.Utility.dll</HintPath>
     </Reference>

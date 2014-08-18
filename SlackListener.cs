@@ -12,6 +12,7 @@ using Countersoft.Gemini.Commons.Entity;
 using Countersoft.Gemini.Infrastructure.Managers;
 using System.Text;
 using Countersoft.Gemini.Commons.Permissions;
+using Countersoft.Foundation.Data;
 
 namespace TSJ.Gemini.Slack
 {
@@ -19,9 +20,10 @@ namespace TSJ.Gemini.Slack
     /**
      * Messages are sent to slack on 3 events:
      * - Create
+     * - Comment
      *      - Immediately published to a slack channel
      *      
-     * - Change (includes comments)
+     * - Change 
      *      - this create a thread (per user/ticket#) which will wait for X seconds 
      *          of no changes flushing out all changes made in that time period.  This is
      *          to accomodate several changes being made at the same time without flooding a channel.
@@ -33,7 +35,6 @@ namespace TSJ.Gemini.Slack
     public class SlackListener : AbstractIssueListener
     {
 
-        //not sure of scope here, is a listener treated as a singleton?  If it is, this need not be static
         //tuple is user and issueid
         private static Dictionary<Tuple<string, int>, IdleTimeoutExecutor> _executorDictionary =
             new Dictionary<Tuple<string, int>, IdleTimeoutExecutor>();
@@ -68,6 +69,23 @@ namespace TSJ.Gemini.Slack
             var project = args.Context.Projects.Get(args.Entity.ProjectId);
             if (project == null) return string.Empty;
             return string.Concat(project.Code, '-', args.Entity.Id);
+        }
+
+        public override void AfterComment(IssueCommentEventArgs args)
+        {
+            var data = GetConfig(args.Context);
+            if (data == null || data.Value == null) return;
+
+            string channel = GetProjectChannel(args.Issue.Project.Id, data.Value.ProjectChannels);
+            if (channel == null || channel.Trim().Length == 0) return;
+
+            QuickSlack.Send(data.Value.SlackAPIEndpoint, channel, string.Format("{0} added a comment to <{1}|{2} - {3}>"
+                                            , args.User.Fullname, args.BuildIssueUrl(args.Issue), args.Issue.IssueKey, args.Issue.Title),
+                                    "more details attached",
+                                    "good",
+                                    new[] { new { title = "Comment", value = StripHTML(args.Entity.Comment), _short = false } }, StripHTML(args.Entity.Comment));
+
+            base.AfterComment(args);
         }
 
         public override void AfterCreate(IssueEventArgs args)
@@ -116,7 +134,10 @@ namespace TSJ.Gemini.Slack
                         //this executes x  seconds after the last update, initially set above  ^^  then adjusted on subsequent
                         //updates further below (in the else) based on the key being found
                         () => { PostChangesToSlack(args, data, channel, createDate); },
-                        () => { _executorDictionary.Remove(key); }, 
+                        () => { 
+                            _executorDictionary.Remove(key);
+                            new SessionManager().CloseSession(); // Need to close the DB connection as we span a new thread.
+                        }, 
                         _executorDictionary);
                 }
                 else
@@ -138,6 +159,9 @@ namespace TSJ.Gemini.Slack
         var issue = issueManager.Get(args.Issue.Id);
         //get the changelog of all changes since the create date (minus a second to avoid missing the initial change)
         var changelog = issueManager.GetChangeLog(issue, userDto, userDto, createDate.AddSeconds(-1));
+        changelog.RemoveAll(c => c.Entity.AttributeChanged == ItemAttributeVisibility.AssociatedComments); // No need to show comments in updates as we already do that in the AfterComment event.
+        if (changelog.Count == 0) return; // No changes made!
+
         var fields = changelog
                             .Select(a => new
                             {
