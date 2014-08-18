@@ -24,7 +24,7 @@ namespace TSJ.Gemini.Slack
     AppControlGuid("D5ED7A38-BE89-403E-8118-E5C3CC8C8E71"),
     AppAuthor("Dana Hanna"),
     AppKey("SlackIntegration"),
-    AppName("Slack Integration"),
+    AppName("Slack Connector"),
     AppDescription("Provides slack integration by posting updates to gemini to a channel in slack."),
     AppRequiresConfigScreen(true)]
     [ValidateInput(false)]
