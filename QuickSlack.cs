@@ -16,6 +16,7 @@ namespace TSJ.Gemini.Slack
             {
                 channel = channel,
                 username = "Gemini",
+                link_names = 1,
                 icon_emoji = ":traffic_light:",
                 text = text,
                 attachments = (fields != null && fields.Length > 0) ? new[] { 
