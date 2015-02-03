@@ -4,7 +4,7 @@
     <description>Provides slack integration by posting issue changes to a channel in slack.</description>
     <version-major>1</version-major>
     <version-minor>0</version-minor>
-    <version-patch>0</version-patch>
+    <version-patch>1</version-patch>
     <publisher>The Software Jedi</publisher>
     <released>2014-07-07T11:31:00Z</released>
     <debug>false</debug>
